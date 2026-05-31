@@ -27,7 +27,7 @@ Installed as **`throttlekit-py`**, imported as **`throttlekit`** (PyPI's `thrott
 project):
 
 ```bash
-pip install throttlekit-py            # (alpha; not yet published) — the gRPC ServiceBackend
+pip install throttlekit-py            # the gRPC ServiceBackend
 pip install "throttlekit-py[redis]"   # + a redis client for the direct RedisBackend
 ```
 
