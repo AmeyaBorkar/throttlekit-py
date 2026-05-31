@@ -21,7 +21,10 @@ classifiers = [
   "License :: OSI Approved :: MIT License",
   "Typing :: Typed",
 ]
-dependencies = ["grpcio>=1.60"]
+# grpcio is the gRPC runtime; protobuf is the generated stubs' runtime (grpcio does NOT pull it in,
+# and the gencode pins a `>= its own version, same major` floor — see throttlekit_pb2.py's
+# ValidateProtobufRuntimeVersion). Both are needed for the ServiceBackend door to import.
+dependencies = ["grpcio>=1.60", "protobuf>=6.31.1,<7"]
 
 [project.optional-dependencies]
 # The direct RedisBackend is client-agnostic; this pulls a concrete client for convenience/tests.

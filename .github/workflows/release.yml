@@ -29,19 +29,21 @@ jobs:
       - run: pip install build twine
       - run: python -m build
       - run: twine check dist/* # validates metadata + README rendering before any upload
-      - name: Assert the wheel ships the gRPC stubs (regression guard)
-        # The _generated/ stubs are git-ignored; a build-hook regression would silently produce a
-        # stub-less wheel whose ServiceBackend ImportErrors on install. Fail the release loudly instead.
+      - name: Smoke-test the wheel installs + imports in a clean env (regression guard)
+        # Two packaging bugs have silently broken `import ServiceBackend` on a fresh install: missing
+        # gRPC stubs (git-ignored, not packaged) and a missing protobuf runtime dep (grpcio doesn't pull
+        # it). A file-presence check missed the second. So install the *built wheel* into a throwaway
+        # venv with only its declared deps and import the service door for real.
         run: |
-          python - <<'PY'
-          import glob, zipfile, sys
-          whl = glob.glob("dist/*.whl")[0]
-          names = zipfile.ZipFile(whl).namelist()
-          need = "throttlekit/_generated/throttlekit_pb2_grpc.py"
-          if need not in names:
-              sys.exit(f"REGRESSION: {need} missing from {whl}\n{names}")
-          print(f"OK: {whl} ships the gRPC stubs")
-          PY
+          set -euo pipefail
+          WHL=$(ls dist/*.whl)
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/python -m pip install --quiet "$WHL"
+          /tmp/smoke/bin/python -c "from throttlekit import ServiceBackend, RedisBackend; print('clean-install import OK')"
+          # The gencode pins a protobuf floor; prove our declared floor actually satisfies it (if a
+          # future build bumps the gencode above this pin, this fails loudly → bump the floor).
+          /tmp/smoke/bin/python -m pip install --quiet "protobuf==6.31.1"
+          /tmp/smoke/bin/python -c "from throttlekit import ServiceBackend; print('floor-protobuf import OK')"
       - uses: actions/upload-artifact@v4
         with:
           name: dist
