@@ -14,6 +14,8 @@ against the **same** golden vectors:
 > tracks it. The raw Lua wire is **not** a frozen contract yet (it ships `frozen: false`), so the
 > `RedisBackend` is explicitly experimental and may change with the core's scripts.
 
+📖 **Full guide:** the [**wiki**](https://github.com/AmeyaBorkar/throttlekit-py/wiki) — [Getting Started](https://github.com/AmeyaBorkar/throttlekit-py/wiki/Getting-Started) · [The axes](https://github.com/AmeyaBorkar/throttlekit-py/wiki/The-Axes) · [Conformance & development](https://github.com/AmeyaBorkar/throttlekit-py/wiki/Conformance-and-Development).
+
 ## The one invariant
 
 The whole ThrottleKit design rests on it: **exactly one thing computes a `Decision`** — the Node core,
