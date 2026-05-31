@@ -1,15 +1,13 @@
 name: Release
 
-# Publishes throttlekit-py to PyPI via trusted publishing (OIDC — no API token) when a `v*` tag is
-# pushed, e.g.  git tag v0.1.0.dev0 && git push origin v0.1.0.dev0
+# Publishes throttlekit-py to PyPI when a `v*` tag is pushed, e.g.
+#   git tag v0.1.0 && git push origin v0.1.0
 #
-# One-time setup on PyPI (https://pypi.org/manage/account/publishing/) — add a *pending* publisher:
-#   PyPI project name : throttlekit-py
-#   Owner             : AmeyaBorkar
-#   Repository        : throttlekit-py
-#   Workflow filename : release.yml
-#   Environment       : pypi
-# After the first publish the pending publisher becomes a normal trusted publisher automatically.
+# Auth: a PyPI API token stored as the repo secret PYPI_API_TOKEN. Add it once with
+#   gh secret set PYPI_API_TOKEN -R AmeyaBorkar/throttlekit-py
+# (paste the token — starting `pypi-` — at the prompt; it lands only in GitHub's encrypted secrets).
+# For the FIRST publish of a not-yet-existing project the token must be ACCOUNT-scoped (a
+# project-scoped token can't exist until the project does); swap to a project-scoped token afterward.
 
 on:
   push:
@@ -37,15 +35,14 @@ jobs:
           path: dist/
 
   pypi:
-    name: Publish to PyPI (trusted publishing)
+    name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write # OIDC token for PyPI trusted publishing
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
