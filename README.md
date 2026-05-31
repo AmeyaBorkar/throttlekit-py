@@ -103,6 +103,11 @@ pinned `contractVersion`). But the real proof is behavioral:
 * `tests/test_service_backend.py` starts a real `throttlekit-server` and asserts the clock-independent
   behavior over gRPC.
 
+Beyond unit conformance, a cross-repo **battle test** in the core repo drives every axis through **both**
+backends against a real Redis-backed 3-server fleet — distributed cap exactness, the windowCoupled
+overshoot bound, crash-reclaim, heartbeat, and one-oracle/two-door state sharing:
+[`research/polyglot/battle-test`](https://github.com/AmeyaBorkar/throttlekit/tree/main/research/polyglot/battle-test).
+
 ## Develop
 
 ```bash
