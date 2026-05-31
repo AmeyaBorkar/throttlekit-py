@@ -23,9 +23,12 @@ core's vendored script, and decodes the reply; the decision is produced **server
 
 ## Install
 
+Installed as **`throttlekit-py`**, imported as **`throttlekit`** (PyPI's `throttlekit` is an unrelated
+project):
+
 ```bash
-pip install throttlekit            # (alpha; not yet published) — the gRPC ServiceBackend
-pip install throttlekit[redis]     # + a redis client for the direct RedisBackend
+pip install throttlekit-py            # (alpha; not yet published) — the gRPC ServiceBackend
+pip install "throttlekit-py[redis]"   # + a redis client for the direct RedisBackend
 ```
 
 ## Use — the service door
