@@ -1,13 +1,23 @@
-"""ThrottleKit — Python client for distributed rate limiting via the gRPC service door.
+"""ThrottleKit — Python client for distributed rate limiting.
 
-``import throttlekit`` is dependency-light (no gRPC import). :class:`ServiceBackend` is imported lazily
-on first access, so the contract drift-gate and the domain types are usable without the generated stubs.
+Two pluggable backends reach the **one** Node core, both proven against the same golden vectors:
+
+* :class:`ServiceBackend` — gRPC to a ``throttlekit-server`` (the lead door; the core computes the
+  decision, the client never touches the raw wire). ``import``-light: grpc is loaded lazily.
+* :class:`RedisBackend` — runs the vendored Lua against the **same Redis** a Node fleet uses (the
+  direct door; decisions are bit-identical to an embedded library). ``check`` only — by design.
 
     from throttlekit import ServiceBackend
     with ServiceBackend("localhost:50051") as rl:
         d = rl.check("api", api_key)
         if not d.allowed:
             ...  # 429; retry after d.retry_after_ms
+
+    import redis
+    from throttlekit import RedisBackend, Gcra
+    api = RedisBackend(redis.Redis.from_url("redis://localhost:6379"),
+                       Gcra(limit=100, period_ms=60_000, burst=20))
+    d = api.check(api_key)
 """
 
 from __future__ import annotations
@@ -22,12 +32,34 @@ from .errors import (
     ServiceUnavailableError,
     ThrottleKitError,
 )
+from .strategies import (
+    FixedWindow,
+    Gcra,
+    SlidingWindow,
+    SlidingWindowLog,
+    Strategy,
+    TokenBucket,
+    from_spec,
+)
 
 if TYPE_CHECKING:
+    from .redis_backend import RedisBackend, RedisClientLike
     from .service_backend import ServiceBackend
 
 __all__ = [
+    # Backends (lazily imported — neither grpc nor a redis client is needed to import throttlekit).
     "ServiceBackend",
+    "RedisBackend",
+    "RedisClientLike",
+    # Strategies for the direct RedisBackend.
+    "Strategy",
+    "Gcra",
+    "TokenBucket",
+    "FixedWindow",
+    "SlidingWindow",
+    "SlidingWindowLog",
+    "from_spec",
+    # Domain types + errors.
     "Decision",
     "Forecast",
     "ThrottleKitError",
@@ -37,11 +69,18 @@ __all__ = [
     "__version__",
 ]
 
+_LAZY = {
+    "ServiceBackend": "service_backend",
+    "RedisBackend": "redis_backend",
+    "RedisClientLike": "redis_backend",
+}
+
 
 def __getattr__(name: str) -> object:
-    """Lazily import :class:`ServiceBackend` so ``import throttlekit`` doesn't require grpc/stubs."""
-    if name == "ServiceBackend":
-        from .service_backend import ServiceBackend
+    """Lazily import the backends so ``import throttlekit`` needs neither grpc nor a redis client."""
+    module = _LAZY.get(name)
+    if module is not None:
+        import importlib
 
-        return ServiceBackend
+        return getattr(importlib.import_module(f".{module}", __name__), name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

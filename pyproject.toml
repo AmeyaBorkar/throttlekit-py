@@ -20,7 +20,9 @@ classifiers = [
 dependencies = ["grpcio>=1.60"]
 
 [project.optional-dependencies]
-dev = ["grpcio-tools>=1.60", "pytest>=8", "ruff>=0.6", "mypy>=1.11"]
+# The direct RedisBackend is client-agnostic; this pulls a concrete client for convenience/tests.
+redis = ["redis>=5"]
+dev = ["grpcio-tools>=1.60", "pytest>=8", "ruff>=0.6", "mypy>=1.11", "redis>=5"]
 
 [project.urls]
 Homepage = "https://github.com/AmeyaBorkar/throttlekit-py"
@@ -61,4 +63,5 @@ ignore_missing_imports = true
 testpaths = ["tests"]
 markers = [
   "integration: requires a running throttlekit-server (and node) — skipped unless available",
+  "redis: requires a reachable Redis (THROTTLEKIT_REDIS_URL or localhost:6380) — skipped unless available",
 ]
