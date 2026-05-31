@@ -118,6 +118,16 @@ def test_leased_two_tier_policy_is_reachable(backend: ServiceBackend) -> None:
     assert results[5].retry_after_ms > 0  # the denied request advises a wait
 
 
+def test_token_budget_debit_is_reachable(backend: ServiceBackend) -> None:
+    # Door B: `budget` is a token-budget meter (the cost axis), reached via the new `debit` op. Debiting
+    # one token at a time spends the budget of 5 then refuses — the core's tokenBudget primitive, over
+    # the wire, from Python.
+    results = [backend.debit("budget", "tenant-1", 1) for _ in range(6)]
+    assert [r.allowed for r in results] == [True, True, True, True, True, False]
+    assert results[0].limit == 5
+    assert results[5].retry_after_ms > 0  # the window has not rolled, so a wait is advised
+
+
 def test_unknown_policy_maps_to_not_found(backend: ServiceBackend) -> None:
     with pytest.raises(PolicyNotFoundError):
         backend.check("no-such-policy", "k")

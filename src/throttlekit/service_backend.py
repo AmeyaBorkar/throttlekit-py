@@ -116,6 +116,20 @@ class ServiceBackend:
             raise _mapped(err) from err
         return _forecast(resp.forecast)
 
+    def debit(self, policy: str, key: str, tokens: int = 1) -> Decision:
+        """Debit ``tokens`` of post-hoc cost against a token-budget ``policy`` for ``key``.
+
+        For the LLM-gateway problem: debit the actual tokens a stream produces as they are produced. A
+        debit is admitted while budget remains; the crossing debit is counted in full and later debits in
+        the window are refused (``allowed == False``). ``policy`` must be a token-budget meter, not a rate
+        limiter (else :class:`OperationNotSupportedError`).
+        """
+        try:
+            resp = self._stub.Debit(pb.DebitRequest(policy=policy, key=key, tokens=tokens))
+        except grpc.RpcError as err:
+            raise _mapped(err) from err
+        return _decision(resp.decision)
+
     def close(self) -> None:
         """Close the underlying channel."""
         self._channel.close()

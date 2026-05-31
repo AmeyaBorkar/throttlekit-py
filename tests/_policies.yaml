@@ -14,3 +14,7 @@ limiters:
     twoTier:
       mode: leased
       batch: 5
+  budget:
+    tokenBudget:
+      budget: 5
+      windowMs: 3600000

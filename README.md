@@ -42,9 +42,10 @@ with ServiceBackend("localhost:50051") as rl:
         ...  # 429 — retry after d.retry_after_ms
 ```
 
-`check` / `check_many` / `peek` / `forecast` return frozen `Decision` / `Forecast` dataclasses. A
-*denial* is a normal `Decision` (`allowed is False`), never an exception; gRPC faults map to
-`PolicyNotFoundError` / `OperationNotSupportedError` / `ServiceUnavailableError`.
+`check` / `check_many` / `peek` / `forecast` return frozen `Decision` / `Forecast` dataclasses;
+`debit(policy, key, tokens)` meters a windowed **token budget** (the cost axis — debit the actual tokens a
+stream produces, e.g. for an LLM gateway). A *denial* is a normal `Decision` (`allowed is False`), never an
+exception; gRPC faults map to `PolicyNotFoundError` / `OperationNotSupportedError` / `ServiceUnavailableError`.
 
 ## Use — the direct Redis door
 
