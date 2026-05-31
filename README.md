@@ -23,6 +23,23 @@ directly or as Lua-in-Redis. Neither backend re-implements an algorithm, so ther
 limiter to keep in sync and no float-determinism risk. The `RedisBackend` marshals ARGV, runs the
 core's vendored script, and decodes the reply; the decision is produced **server-side, in Lua**.
 
+## Why reach for it (it's not a thin client)
+
+You're not reaching a re-implemented toy — you're reaching the **one** core whose distributed behavior is
+*proven*. Every decision this client returns carries the guarantees the Node core is built on:
+
+- A **machine-checked (TLA⁺), fleet-size-independent overshoot bound** — window-coupled two-tier leasing
+  admits ≤ the limit *no matter how many instances*. Most rate limiters can't state a bound at all.
+- The **GALE** (provable distributed leasing) and **TALE** (token-budget escrow for LLM gateways) research
+  programs ship as real features — and they're reachable from Python: leased two-tier `check`, the LLM cost
+  axis via `debit`, weighted-fair escrow, and unified rate × concurrency × cost via `admit`.
+- **Bit-identical** decisions: the `RedisBackend` replays the core's full golden vectors through real Redis
+  and matches the Node oracle field-for-field — so a Python and a Node client on one limit never drift.
+
+A Python service gets the *same proven core* a Node fleet does, not a second rate limiter to keep in sync.
+The research — [**GALE & TALE**](https://github.com/AmeyaBorkar/throttlekit/wiki/Research) — is what makes
+this worth reaching for.
+
 ## Install
 
 Installed as **`throttlekit-py`**, imported as **`throttlekit`** (PyPI's `throttlekit` is an unrelated
