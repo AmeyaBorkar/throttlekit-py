@@ -1,0 +1,4 @@
+# Force LF everywhere. The vendored contract artifacts are sha256-pinned in contract/manifest.sha256
+# (hashed as LF); a CRLF checkout would change their bytes and break the drift gate on a fresh clone.
+* text=auto eol=lf
+*.png binary

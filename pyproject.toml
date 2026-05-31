@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "throttlekit"
+version = "0.1.0.dev0"
+description = "Python client for ThrottleKit — distributed rate limiting via the gRPC service door."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Ameya Borkar" }]
+keywords = ["rate-limiting", "grpc", "throttlekit", "gcra", "token-bucket"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Typing :: Typed",
+]
+dependencies = ["grpcio>=1.60"]
+
+[project.optional-dependencies]
+dev = ["grpcio-tools>=1.60", "pytest>=8", "ruff>=0.6", "mypy>=1.11"]
+
+[project.urls]
+Homepage = "https://github.com/AmeyaBorkar/throttlekit-py"
+"Core (Node)" = "https://www.npmjs.com/package/throttlekit"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/throttlekit"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["src/throttlekit/_generated"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# `ruff format` owns code line width; E501 would also flag docstring/string prose the formatter
+# deliberately won't break. Disabling it is the standard autoformatter convention.
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+files = ["src/throttlekit"]
+exclude = ["src/throttlekit/_generated/"]
+
+[[tool.mypy.overrides]]
+# The generated gRPC stubs are not strictly typed; don't fail the strict gate on them.
+module = ["throttlekit._generated.*"]
+ignore_errors = true
+follow_imports = "skip"
+
+[[tool.mypy.overrides]]
+# grpcio does not ship type information (no py.typed); don't fail strict on the untyped import.
+module = ["grpc", "grpc.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "integration: requires a running throttlekit-server (and node) — skipped unless available",
+]
