@@ -108,6 +108,16 @@ def test_independent_keys_have_independent_budgets(backend: ServiceBackend) -> N
     assert backend.check("api", "bob").allowed  # bob's budget is untouched by alice
 
 
+def test_leased_two_tier_policy_is_reachable(backend: ServiceBackend) -> None:
+    # Door A: `leased` is a two-tier *leased* limiter (L1-local credits over a shared L2). The advanced
+    # axis is reachable with a plain `check` — no new client API — and the core still computes the
+    # decision, so the cold burst admits exactly the budget then denies, just like a plain limiter.
+    results = [backend.check("leased", "user-leased") for _ in range(6)]
+    assert [r.allowed for r in results] == [True, True, True, True, True, False]
+    assert results[0].limit == 5
+    assert results[5].retry_after_ms > 0  # the denied request advises a wait
+
+
 def test_unknown_policy_maps_to_not_found(backend: ServiceBackend) -> None:
     with pytest.raises(PolicyNotFoundError):
         backend.check("no-such-policy", "k")

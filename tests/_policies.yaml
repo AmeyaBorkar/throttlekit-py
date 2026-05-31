@@ -1,6 +1,16 @@
 # Policies for the cross-language integration test (tests/test_service_backend.py).
 # `api` is a cold GCRA burst of 5 over a long period, so within a fast test the 5 burst tokens admit and
 # the 6th is denied with no meaningful refill — a deterministic cross-process assertion.
+# `leased` is the same cold burst served through a two-tier *leased* limiter (Door A): the gRPC client
+# reaches it with a plain `check`, proving the advanced two-tier axis is reachable from Python.
 version: 1
 limiters:
   api: { strategy: gcra, limit: 5, period: 1h, burst: 5 }
+  leased:
+    strategy: gcra
+    limit: 5
+    period: 1h
+    burst: 5
+    twoTier:
+      mode: leased
+      batch: 5
