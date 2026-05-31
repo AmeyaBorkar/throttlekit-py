@@ -1,12 +1,14 @@
 [build-system]
-requires = ["hatchling"]
+# grpcio-tools is a *build* dep: the wheel build hook (hatch_build.py) generates the gRPC stubs from
+# the vendored proto so they ship in the wheel (see [tool.hatch.build.targets.wheel] below).
+requires = ["hatchling", "grpcio-tools>=1.60"]
 build-backend = "hatchling.build"
 
 [project]
 # Dist name is `throttlekit-py` (PyPI `throttlekit` is an unrelated project); the import name stays
 # `throttlekit` — install throttlekit-py, `import throttlekit`.
 name = "throttlekit-py"
-version = "0.2.0"
+version = "0.2.1"
 description = "Python client for ThrottleKit — distributed rate limiting via gRPC or direct Redis."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -32,6 +34,13 @@ Homepage = "https://github.com/AmeyaBorkar/throttlekit-py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/throttlekit"]
+# The gRPC stubs are git-ignored (regenerated, not committed). The custom hook generates them at build
+# time; `artifacts` force-includes the result past .gitignore so a `pip install` wheel can `import
+# ServiceBackend`. Without this the wheel ships stub-less and the service door raises ImportError.
+artifacts = ["src/throttlekit/_generated/**/*.py"]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
 
 [tool.ruff]
 line-length = 100

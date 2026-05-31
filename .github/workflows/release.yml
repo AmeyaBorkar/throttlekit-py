@@ -29,6 +29,19 @@ jobs:
       - run: pip install build twine
       - run: python -m build
       - run: twine check dist/* # validates metadata + README rendering before any upload
+      - name: Assert the wheel ships the gRPC stubs (regression guard)
+        # The _generated/ stubs are git-ignored; a build-hook regression would silently produce a
+        # stub-less wheel whose ServiceBackend ImportErrors on install. Fail the release loudly instead.
+        run: |
+          python - <<'PY'
+          import glob, zipfile, sys
+          whl = glob.glob("dist/*.whl")[0]
+          names = zipfile.ZipFile(whl).namelist()
+          need = "throttlekit/_generated/throttlekit_pb2_grpc.py"
+          if need not in names:
+              sys.exit(f"REGRESSION: {need} missing from {whl}\n{names}")
+          print(f"OK: {whl} ships the gRPC stubs")
+          PY
       - uses: actions/upload-artifact@v4
         with:
           name: dist
