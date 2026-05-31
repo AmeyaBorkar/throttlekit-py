@@ -1,0 +1,51 @@
+name: Release
+
+# Publishes throttlekit-py to PyPI via trusted publishing (OIDC — no API token) when a `v*` tag is
+# pushed, e.g.  git tag v0.1.0.dev0 && git push origin v0.1.0.dev0
+#
+# One-time setup on PyPI (https://pypi.org/manage/account/publishing/) — add a *pending* publisher:
+#   PyPI project name : throttlekit-py
+#   Owner             : AmeyaBorkar
+#   Repository        : throttlekit-py
+#   Workflow filename : release.yml
+#   Environment       : pypi
+# After the first publish the pending publisher becomes a normal trusted publisher automatically.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build dists
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/* # validates metadata + README rendering before any upload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    name: Publish to PyPI (trusted publishing)
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # OIDC token for PyPI trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
