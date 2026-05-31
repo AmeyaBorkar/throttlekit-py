@@ -46,7 +46,9 @@ def test_params_exactly_cover_check_argv(kind: str) -> None:
 
 def test_from_spec_maps_camelcase_options() -> None:
     assert from_spec("gcra", SPECS["gcra"]) == Gcra(limit=10, period_ms=1000, burst=5)
-    assert from_spec("tokenBucket", SPECS["tokenBucket"]) == TokenBucket(capacity=10, refill_per_sec=5)
+    assert from_spec("tokenBucket", SPECS["tokenBucket"]) == TokenBucket(
+        capacity=10, refill_per_sec=5
+    )
     assert from_spec("fixedWindow", SPECS["fixedWindow"]) == FixedWindow(limit=5, window_ms=1000)
     assert from_spec("slidingWindow", SPECS["slidingWindow"]) == SlidingWindow(
         limit=10, window_ms=1000, buckets=10

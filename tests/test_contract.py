@@ -75,7 +75,9 @@ def test_vendored_scripts_match_their_manifest() -> None:
     for entry in scripts:
         path = SCRIPTS / entry["file"]
         actual = hashlib.sha256(path.read_bytes()).hexdigest()
-        assert actual == entry["sha256"], f"{entry['file']} drifted — re-run scripts/sync_contract.py"
+        assert actual == entry["sha256"], (
+            f"{entry['file']} drifted — re-run scripts/sync_contract.py"
+        )
         seen.add((entry["strategy"], entry["role"]))
     # Exactly the five vectored strategies, each with a check + a read script.
     assert seen == {(s, r) for s in VECTORED_STRATEGIES for r in ("check", "read")}

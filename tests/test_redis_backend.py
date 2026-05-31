@@ -116,7 +116,9 @@ def test_client_sha1_matches_the_redis_script_cache(client: Any) -> None:
     """
     script = _contract.script("gcra", "check")
     backend = RedisBackend(
-        client, from_spec("gcra", {"limit": 5, "periodMs": 1000, "burst": 5}), prefix="tkpy-test:sha"
+        client,
+        from_spec("gcra", {"limit": 5, "periodMs": 1000, "burst": 5}),
+        prefix="tkpy-test:sha",
     )
     client.delete("tkpy-test:sha:k")
     backend.check("k", 1, now=BASE)  # populates the script cache via EVALSHA→EVAL fallback
