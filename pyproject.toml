@@ -8,7 +8,7 @@ build-backend = "hatchling.build"
 # Dist name is `throttlekit-py` (PyPI `throttlekit` is an unrelated project); the import name stays
 # `throttlekit` — install throttlekit-py, `import throttlekit`.
 name = "throttlekit-py"
-version = "0.2.1"
+version = "0.3.0"
 description = "Python client for ThrottleKit — distributed rate limiting via gRPC or direct Redis."
 readme = "README.md"
 requires-python = ">=3.10"
