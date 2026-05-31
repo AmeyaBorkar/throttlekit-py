@@ -47,6 +47,19 @@ with ServiceBackend("localhost:50051") as rl:
 stream produces, e.g. for an LLM gateway). A *denial* is a normal `Decision` (`allowed is False`), never an
 exception; gRPC faults map to `PolicyNotFoundError` / `OperationNotSupportedError` / `ServiceUnavailableError`.
 
+`admit(policy, key)` reaches the **concurrency axis** (and unified rate × concurrency): it holds an
+in-flight slot for the duration of the work and returns an `Admission` context manager that releases it on
+exit — `dropped=True` if the block raised, so the adaptive limit contracts on an overload. The server
+reclaims an abandoned slot if a client crashes; for a hold longer than the lease TTL, pass `heartbeat=True`
+to renew it from a background thread.
+
+```python
+with rl.admit("checkout", user_id) as adm:    # holds a concurrency slot
+    if not adm.allowed:
+        return 429                             # adm.binding_axis says which axis bound it
+    do_work()                                  # released on exit (dropped=True if this raises)
+```
+
 ## Use — the direct Redis door
 
 Configure a strategy and point it at the Redis your fleet shares. `check` is the whole surface (it is

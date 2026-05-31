@@ -18,3 +18,22 @@ limiters:
     tokenBudget:
       budget: 5
       windowMs: 3600000
+  # Door C — concurrency / unified admission (served by Admit/Release/Heartbeat). `cc` is concurrency-only
+  # with a pinned ceiling of 3; `single` a pinned ceiling of 1 (for the heartbeat long-hold test);
+  # `unified` composes a rate axis (gcra burst 5) with a pinned concurrency ceiling of 2 (which binds first).
+  cc:
+    concurrency:
+      minLimit: 3
+      maxLimit: 3
+  single:
+    concurrency:
+      minLimit: 1
+      maxLimit: 1
+  unified:
+    strategy: gcra
+    limit: 5
+    period: 1h
+    burst: 5
+    concurrency:
+      minLimit: 2
+      maxLimit: 2

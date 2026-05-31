@@ -44,11 +44,12 @@ from .strategies import (
 
 if TYPE_CHECKING:
     from .redis_backend import RedisBackend, RedisClientLike
-    from .service_backend import ServiceBackend
+    from .service_backend import Admission, ServiceBackend
 
 __all__ = [
     # Backends (lazily imported — neither grpc nor a redis client is needed to import throttlekit).
     "ServiceBackend",
+    "Admission",
     "RedisBackend",
     "RedisClientLike",
     # Strategies for the direct RedisBackend.
@@ -71,6 +72,7 @@ __all__ = [
 
 _LAZY = {
     "ServiceBackend": "service_backend",
+    "Admission": "service_backend",
     "RedisBackend": "redis_backend",
     "RedisClientLike": "redis_backend",
 }

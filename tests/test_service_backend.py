@@ -30,7 +30,7 @@ POLICIES = ROOT / "tests" / "_policies.yaml"
 
 try:
     from throttlekit import ServiceBackend
-    from throttlekit.errors import PolicyNotFoundError
+    from throttlekit.errors import OperationNotSupportedError, PolicyNotFoundError
 
     _STUBS_OK = True
 except ImportError:
@@ -131,3 +131,75 @@ def test_token_budget_debit_is_reachable(backend: ServiceBackend) -> None:
 def test_unknown_policy_maps_to_not_found(backend: ServiceBackend) -> None:
     with pytest.raises(PolicyNotFoundError):
         backend.check("no-such-policy", "k")
+
+
+def test_concurrency_admit_holds_then_denies_then_release_frees(backend: ServiceBackend) -> None:
+    # Door C: `cc` is a concurrency-only admitter (pinned ceiling 3). Three admits hold a slot each; the
+    # fourth is denied on the concurrency axis (and holds nothing). Releasing one frees a slot.
+    held = [backend.admit("cc", "k") for _ in range(4)]
+    assert [a.allowed for a in held] == [True, True, True, False]
+    assert all(a.held for a in held[:3])
+    assert not held[3].held
+    assert held[3].binding_axis == "concurrency"
+    held[0].release()  # free one slot
+    extra = backend.admit("cc", "k")
+    assert extra.allowed
+    for a in (held[1], held[2], extra):  # leave the guard empty for the next test
+        a.release()
+
+
+def test_admission_context_manager_releases_on_exit(backend: ServiceBackend) -> None:
+    with (
+        backend.admit("cc", "ctx") as a1,
+        backend.admit("cc", "ctx") as a2,
+        backend.admit("cc", "ctx") as a3,
+    ):
+        assert a1.allowed and a2.allowed and a3.allowed
+        assert not backend.admit("cc", "ctx").allowed  # all three slots are held
+    # the `with` released all three on exit → a fresh admit succeeds again
+    after = backend.admit("cc", "ctx")
+    assert after.allowed
+    after.release()
+
+
+def test_unified_admit_binds_on_the_concurrency_axis(backend: ServiceBackend) -> None:
+    # `unified` = rate(gcra burst 5) × concurrency(2). The concurrency ceiling (2) binds before the rate.
+    a = [backend.admit("unified", "u") for _ in range(3)]
+    assert [x.allowed for x in a] == [True, True, False]
+    assert a[2].binding_axis == "concurrency"
+    for x in a[:2]:
+        x.release()
+
+
+def test_admit_on_a_rate_limiter_is_unsupported(backend: ServiceBackend) -> None:
+    with pytest.raises(OperationNotSupportedError):
+        backend.admit("api", "k")  # `api` is a rate limiter, reached by `check`, not `admit`
+
+
+def test_heartbeat_keeps_a_long_hold_alive(backend: ServiceBackend) -> None:
+    # `single` is a pinned ceiling of 1. With heartbeat=True a daemon thread renews the lease, so holding
+    # past the server's 2s lease TTL must NOT be reclaimed — the long-hold story, over the wire.
+    with backend.admit("single", "hb", heartbeat=True) as a:
+        assert a.allowed
+        time.sleep(3.0)  # > leaseTtlMs (2000); the heartbeat pump renews it across the boundary
+        assert not a.reclaimed
+        assert not backend.admit("single", "hb").allowed  # still held by the heart-beaten lease
+    assert backend.admit("single", "hb").allowed  # released on context exit
+
+
+def test_server_reclaims_abandoned_leases(backend: ServiceBackend) -> None:
+    # Crash recovery, over the wire: hold all 3 slots and never release. The server's TTL sweep reclaims
+    # the abandoned slots, so a later admit eventually succeeds. (Defined last: it leaves leases to expire.)
+    abandoned = [backend.admit("cc", "crash") for _ in range(3)]
+    assert all(a.allowed for a in abandoned)
+    assert not backend.admit("cc", "crash").allowed  # full while the abandoned slots are still held
+    deadline = time.time() + 8.0
+    reclaimed = False
+    while time.time() < deadline:
+        a = backend.admit("cc", "crash")
+        if a.allowed:
+            a.release()
+            reclaimed = True
+            break
+        time.sleep(0.25)
+    assert reclaimed, "the server did not reclaim the abandoned leases within 8s"
