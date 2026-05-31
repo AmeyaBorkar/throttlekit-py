@@ -61,3 +61,6 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          # Idempotency: a duplicate-version upload (e.g. a re-pushed/re-run tag) is a no-op success,
+          # not a hard "file already exists" failure. PyPI never allows overwriting an existing version.
+          skip-existing: true
