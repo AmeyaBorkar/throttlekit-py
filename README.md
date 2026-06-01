@@ -1,8 +1,9 @@
 # throttlekit (Python)
 
-Python client for [**ThrottleKit**](https://www.npmjs.com/package/throttlekit) — distributed rate
-limiting against the **one** Node core, reached through either of two pluggable backends and proven
-against the **same** golden vectors:
+**The rate limiter you can prove — now from Python.** This is [**ThrottleKit**](https://www.npmjs.com/package/throttlekit)'s
+Python client, and it re-implements nothing: every decision comes from the **one** Node core — carrying its
+**machine-checked, fleet-size-independent overshoot bound**, **bit-identical** to the Node oracle — through
+either of two pluggable backends:
 
 | Backend | Path | Decision computed in | Use it when |
 |---|---|---|---|
@@ -30,15 +31,15 @@ You're not reaching a re-implemented toy — you're reaching the **one** core wh
 
 - A **machine-checked (TLA⁺), fleet-size-independent overshoot bound** — window-coupled two-tier leasing
   admits ≤ the limit *no matter how many instances*. Most rate limiters can't state a bound at all.
-- The **GALE** (provable distributed leasing) and **TALE** (token-budget escrow for LLM gateways) research
-  programs ship as real features — and they're reachable from Python: leased two-tier `check`, the LLM cost
-  axis via `debit`, weighted-fair escrow, and unified rate × concurrency × cost via `admit`.
+- **GALE** (provable distributed leasing) and **TALE** (token-budget escrow for LLM gateways) ship as real
+  features — and they're reachable from Python: leased two-tier `check`, the LLM cost axis via `debit`,
+  weighted-fair escrow, and unified rate × concurrency × cost via `admit`.
 - **Bit-identical** decisions: the `RedisBackend` replays the core's full golden vectors through real Redis
   and matches the Node oracle field-for-field — so a Python and a Node client on one limit never drift.
 
 A Python service gets the *same proven core* a Node fleet does, not a second rate limiter to keep in sync.
-The research — [**GALE & TALE**](https://github.com/AmeyaBorkar/throttlekit/wiki/Research) — is what makes
-this worth reaching for.
+The guarantees — [**how they work**](https://github.com/AmeyaBorkar/throttlekit/wiki/Research) — are what
+make this worth reaching for from any language.
 
 ## Install
 
