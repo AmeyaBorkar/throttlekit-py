@@ -1,8 +1,9 @@
 # throttlekit (Python)
 
 **The rate limiter you can prove — now from Python.** This is [**ThrottleKit**](https://www.npmjs.com/package/throttlekit)'s
-Python client, and it re-implements nothing: every decision comes from the **one** Node core — carrying its
-**machine-checked, fleet-size-independent overshoot bound**, **bit-identical** to the Node oracle — through
+Python client, and it re-implements nothing: every decision comes from the **one** Node core and its two
+engines — **GALE** (provable distributed leasing) and **TALE** (LLM token-budget escrow) — carrying a
+**machine-checked, fleet-size-independent overshoot bound**, **bit-identical** to the Node oracle, through
 either of two pluggable backends:
 
 | Backend | Path | Decision computed in | Use it when |
