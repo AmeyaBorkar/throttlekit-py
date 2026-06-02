@@ -1,10 +1,11 @@
 # throttlekit (Python)
 
-**The rate limiter you can prove — now from Python.** This is [**ThrottleKit**](https://www.npmjs.com/package/throttlekit)'s
-Python client, and it re-implements nothing: every decision comes from the **one** Node core and its two
-engines — **GALE** (provable distributed leasing) and **TALE** (LLM token-budget escrow) — carrying a
-**machine-checked, fleet-size-independent overshoot bound**, **bit-identical** to the Node oracle, through
-either of two pluggable backends:
+**Beyond rate limiting — from Python.** Govern **rate, concurrency, and cost**, *provably*. This is
+[**ThrottleKit**](https://www.npmjs.com/package/throttlekit)'s Python client, and it re-implements nothing:
+every decision comes from the **one** Node core and its two engines — **GALE** (provable distributed leasing,
+a fleet-size-independent overshoot bound machine-checked in TLA⁺) and **TALE** (token-budget escrow — meter
+what your LLM *spends* as it streams) — **bit-identical** to the Node oracle, through either of two pluggable
+backends:
 
 | Backend | Path | Decision computed in | Use it when |
 |---|---|---|---|
@@ -16,7 +17,7 @@ either of two pluggable backends:
 > tracks it. The raw Lua wire is **not** a frozen contract yet (it ships `frozen: false`), so the
 > `RedisBackend` is explicitly experimental and may change with the core's scripts.
 
-📖 **Full guide:** the [**wiki**](https://github.com/AmeyaBorkar/throttlekit-py/wiki) — [Getting Started](https://github.com/AmeyaBorkar/throttlekit-py/wiki/Getting-Started) · [The axes](https://github.com/AmeyaBorkar/throttlekit-py/wiki/The-Axes) · [Conformance & development](https://github.com/AmeyaBorkar/throttlekit-py/wiki/Conformance-and-Development).
+🌐 **[throttlekit.in](https://throttlekit.in)** · 📖 **Full guide:** the [**wiki**](https://github.com/AmeyaBorkar/throttlekit-py/wiki) — [Getting Started](https://github.com/AmeyaBorkar/throttlekit-py/wiki/Getting-Started) · [The axes](https://github.com/AmeyaBorkar/throttlekit-py/wiki/The-Axes) · [Conformance & development](https://github.com/AmeyaBorkar/throttlekit-py/wiki/Conformance-and-Development).
 
 ## The one invariant
 
