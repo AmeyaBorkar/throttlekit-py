@@ -32,6 +32,8 @@ from .errors import (
     ServiceUnavailableError,
     ThrottleKitError,
 )
+from .headers import decision_headers
+from .ratelimit import Checker, OnUnavailable, RateLimited, bind_policy, rate_limit
 from .strategies import (
     FixedWindow,
     Gcra,
@@ -67,6 +69,13 @@ __all__ = [
     "PolicyNotFoundError",
     "OperationNotSupportedError",
     "ServiceUnavailableError",
+    # Framework-agnostic ergonomics (dependency-light — eagerly importable).
+    "decision_headers",
+    "rate_limit",
+    "RateLimited",
+    "bind_policy",
+    "Checker",
+    "OnUnavailable",
     "__version__",
 ]
 
