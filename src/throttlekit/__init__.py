@@ -46,7 +46,9 @@ from .strategies import (
 
 if TYPE_CHECKING:
     from .redis_backend import RedisBackend, RedisClientLike
+    from .redis_backend_async import AsyncRedisBackend, AsyncRedisClientLike
     from .service_backend import Admission, ServiceBackend
+    from .service_backend_async import AsyncAdmission, AsyncServiceBackend
 
 __all__ = [
     # Backends (lazily imported — neither grpc nor a redis client is needed to import throttlekit).
@@ -54,6 +56,11 @@ __all__ = [
     "Admission",
     "RedisBackend",
     "RedisClientLike",
+    # Async backends (the grpc.aio / redis.asyncio twins — also lazily imported).
+    "AsyncServiceBackend",
+    "AsyncAdmission",
+    "AsyncRedisBackend",
+    "AsyncRedisClientLike",
     # Strategies for the direct RedisBackend.
     "Strategy",
     "Gcra",
@@ -84,6 +91,10 @@ _LAZY = {
     "Admission": "service_backend",
     "RedisBackend": "redis_backend",
     "RedisClientLike": "redis_backend",
+    "AsyncServiceBackend": "service_backend_async",
+    "AsyncAdmission": "service_backend_async",
+    "AsyncRedisBackend": "redis_backend_async",
+    "AsyncRedisClientLike": "redis_backend_async",
 }
 
 
