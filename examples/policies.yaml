@@ -1,0 +1,21 @@
+# Policy file for examples/service_backend.py — loaded by the Node `throttlekit-server`.
+# One file, every axis. The backing store is the server's choice (--store ...); these policies are
+# identical regardless of backend.
+version: 1
+limiters:
+  # rate — the base axis. A cold burst of 5 over a long period, so the example's first 5 checks admit
+  # and the rest deny with no meaningful refill (a clear, deterministic demo).
+  api:
+    strategy: gcra
+    limit: 5
+    period: 1h
+    burst: 5
+  # cost — a windowed token budget (e.g. an LLM gateway), reached via debit()
+  completions:
+    tokenBudget:
+      budget: 100000
+      windowMs: 60000
+  # concurrency — at most N requests in flight at once, reached via admit()
+  checkout:
+    concurrency:
+      maxLimit: 64
