@@ -1,21 +1,49 @@
-# Policy file for examples/service_backend.py — loaded by the Node `throttlekit-server`.
-# One file, every axis. The backing store is the server's choice (--store ...); these policies are
-# identical regardless of backend.
+# Policy file for the throttlekit-py examples — loaded by the Node `throttlekit-server`.
+# One file, every axis. The backing store is the server's choice (--store memory|redis|postgres|dynamodb);
+# these policies are identical regardless of backend, and the core computes every decision server-side.
 version: 1
 limiters:
-  # rate — the base axis. A cold burst of 5 over a long period, so the example's first 5 checks admit
-  # and the rest deny with no meaningful refill (a clear, deterministic demo).
+  # rate — the base axis. A cold burst of 5 over a long period, so the first 5 checks admit and the rest
+  # deny with no meaningful refill (a clear, deterministic demo). Reached via check/check_many/peek/forecast.
   api:
     strategy: gcra
     limit: 5
     period: 1h
     burst: 5
-  # cost — a windowed token budget (e.g. an LLM gateway), reached via debit()
+
+  # two-tier leased — distributed rate limiting with an L1-local credit batch drawn from the shared L2
+  # store; windowCoupled ⇒ per-window overshoot is exactly the limit at ANY fleet size. Still reached via
+  # a plain check() — no new client API.
+  leased-api:
+    strategy: gcra
+    limit: 500
+    period: 1h
+    burst: 500
+    twoTier:
+      mode: leased
+      batch: 25
+      windowCoupled: true
+
+  # cost — a windowed token budget (e.g. an LLM gateway), reached via debit(). 100k tokens per minute.
   completions:
     tokenBudget:
       budget: 100000
       windowMs: 60000
-  # concurrency — at most N requests in flight at once, reached via admit()
+
+  # concurrency — at most N requests in flight at once, reached via admit(). A pinned cap (min == max).
   checkout:
     concurrency:
-      maxLimit: 64
+      minLimit: 8
+      maxLimit: 8
+
+  # unified rate × concurrency — both axes on one policy; admit() composes them and Admission.binding_axis
+  # reports which one ("rate" / "concurrency") bound a denial. Tight caps so the demo trips the concurrency
+  # axis first (2 in-flight) while the rate burst (5) still has headroom.
+  unified-api:
+    strategy: gcra
+    limit: 5
+    period: 1h
+    burst: 5
+    concurrency:
+      minLimit: 2
+      maxLimit: 2

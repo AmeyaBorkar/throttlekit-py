@@ -6,6 +6,24 @@ All notable changes to **throttlekit-py** are documented here. The format follow
 
 ## [Unreleased]
 
+### Added
+
+- **A full `examples/` set** — one runnable script per capability: sync and async `ServiceBackend`, the
+  direct `RedisBackend`, the cost axis (`debit` streaming tokens against a budget), the concurrency
+  `admit` lifecycle (held slot / `dropped` / `heartbeat` / `binding_axis`), and a FastAPI web-adapter
+  app. The example `policies.yaml` now defines a policy per axis (rate, two-tier leased, cost,
+  concurrency, unified).
+
+### Changed
+
+- **CI hardening.** The GitHub Actions CI now runs a 3.10–3.13 matrix of `mypy --python-version` +
+  `pytest` with a Redis service container (so the cross-language `test_redis_backend.py` vector replay
+  runs on every version, not just locally), plus two standalone blocking jobs: a pure-Python **contract
+  drift-gate** and a **build-hook** check that builds the real wheel and asserts the generated gRPC stubs
+  are inside it (`scripts/check_wheel_stubs.py`).
+- **Releases now publish to PyPI via trusted publishing (OIDC)** — no long-lived API token. See the new
+  [`RELEASING.md`](RELEASING.md) for the one-time PyPI trusted-publisher setup.
+
 ## [0.4.0] — 2026-06-04
 
 ### Added
