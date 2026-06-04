@@ -16,6 +16,12 @@ Each door has an `asyncio` twin — **`AsyncServiceBackend`** and **`AsyncRedisB
 batteries-included **FastAPI / Starlette / Django / Flask** integrations under `throttlekit.contrib`
 (see below).
 
+The `ServiceBackend` is **store-agnostic**: the `throttlekit-server` it points at can be backed by an
+in-process **memory** store, a shared **Redis**, or a shared **Postgres** (`--store postgres`, no Redis
+required) — the client sends the same requests and the decision is the core's regardless. (Deno KV and
+Cloudflare D1 / Durable Objects / Workers KV are *edge-runtime* stores: they run only inside those
+runtimes, not behind the Node service door.)
+
 > **Status: experimental (alpha).** The contract (`throttlekit.proto`, the golden vectors, and the
 > extracted Lua) is vendored and checksum-pinned from the frozen `throttlekit` 1.0 core; this client
 > tracks it. The raw Lua wire is **not** a frozen contract yet (it ships `frozen: false`), so the
