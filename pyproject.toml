@@ -44,7 +44,10 @@ all = ["redis>=5", "fastapi>=0.100", "starlette>=0.37", "django>=4.2", "flask>=2
 dev = [
   "grpcio-tools~=1.80.0",  # match the pinned build tool so local codegen == the released gencode
   "pytest>=8",
-  "ruff>=0.6",
+  # Pin ruff exactly: `ruff format` output can shift between releases, so an unpinned floor drifts a
+  # locally-clean tree into a red `ruff format --check` on CI (CI installs whatever is newest). Bump
+  # deliberately. Same reproducibility reason we pin grpcio-tools above.
+  "ruff==0.15.15",
   "mypy>=1.11",
   "redis>=5",
   # the contrib adapters + their in-process test clients (httpx drives the Starlette/FastAPI TestClient)

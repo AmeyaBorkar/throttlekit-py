@@ -158,7 +158,9 @@ def test_independent_keys_have_independent_budgets_over_postgres(backend: Servic
     a = f"alice-{uuid.uuid4().hex}"
     b = f"bob-{uuid.uuid4().hex}"
     assert backend.check("api", a).allowed
-    assert backend.check("api", b).allowed  # bob's budget is untouched by alice (per-key rows in PG)
+    assert backend.check(
+        "api", b
+    ).allowed  # bob's budget is untouched by alice (per-key rows in PG)
 
 
 def test_leased_two_tier_over_postgres(backend: ServiceBackend) -> None:

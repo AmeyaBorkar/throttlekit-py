@@ -99,7 +99,9 @@ def backend() -> Iterator[ServiceBackend]:
             f"server not built: {SERVER_BIN} (run `npm run build` in the core repo's server/)"
         )
     if DDB_ENDPOINT is None or not _endpoint_reachable(DDB_ENDPOINT):
-        pytest.skip("no DynamoDB reachable at THROTTLEKIT_TEST_DYNAMODB (start dynamodb-local on :8000)")
+        pytest.skip(
+            "no DynamoDB reachable at THROTTLEKIT_TEST_DYNAMODB (start dynamodb-local on :8000)"
+        )
 
     port = _free_port()
     # dynamodb-local ignores credentials, but the AWS SDK requires them to be present.
@@ -164,7 +166,9 @@ def test_independent_keys_have_independent_budgets_over_dynamodb(backend: Servic
     a = f"alice-{uuid.uuid4().hex}"
     b = f"bob-{uuid.uuid4().hex}"
     assert backend.check("api", a).allowed
-    assert backend.check("api", b).allowed  # bob's budget is untouched by alice (per-key items in DDB)
+    assert backend.check(
+        "api", b
+    ).allowed  # bob's budget is untouched by alice (per-key items in DDB)
 
 
 def test_unknown_policy_maps_to_not_found(backend: ServiceBackend) -> None:

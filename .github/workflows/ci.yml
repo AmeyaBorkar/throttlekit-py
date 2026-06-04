@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   lint:
-    name: Lint & types
+    name: Lint & format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -18,13 +18,14 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e .[dev]
-      - run: python scripts/gen_proto.py # ServiceBackend imports the generated stubs
+      - run: python scripts/gen_proto.py # ruff lints the package; the generated stubs are excluded
+      # ruff's target-version is pinned (py310) and it lints byte-for-byte the same on every interpreter,
+      # so one run covers the whole matrix — no value in repeating it per Python version.
       - run: ruff check .
       - run: ruff format --check .
-      - run: mypy
 
   test:
-    name: Test (py ${{ matrix.python }})
+    name: Types & tests (py ${{ matrix.python }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -42,8 +43,9 @@ jobs:
           --health-retries 5
     env:
       # The full cross-language conformance (tests/test_redis_backend.py) replays every golden vector
-      # through the vendored Lua against this Redis. The service-door integration test skips (no Node
-      # server is built in this repo's CI) — the rigorous time-parametrized proof is the Redis one.
+      # through the vendored Lua against this Redis — the rigorous, time-parametrized proof. Setting the
+      # URL makes it RUN on every Python version (it skips, never fails, only when no Redis is reachable).
+      # The service-door integration test still skips (no Node server is built in this repo's CI).
       THROTTLEKIT_REDIS_URL: redis://localhost:6379
     steps:
       - uses: actions/checkout@v5
@@ -52,4 +54,45 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: pip install -e .[dev]
       - run: python scripts/gen_proto.py
+      # Type-check the package against EACH supported version's view (we promise `requires-python >=3.10`):
+      # --python-version makes mypy --strict reject a symbol/feature that isn't available on that floor.
+      - run: mypy --python-version ${{ matrix.python }}
       - run: pytest -v
+
+  contract:
+    name: Contract drift-gate
+    # The vendored proto / Lua / golden vectors are checksum-pinned to the frozen core; this gate fails
+    # loudly the moment any of them drifts (or the pinned contractVersion moves). It is pure Python — no
+    # gRPC stubs, no Redis, no Node — so it is a fast, standalone, unmaskable BLOCKING check that can't be
+    # hidden by an infra hiccup in the matrix above.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .[dev]
+      - run: pytest tests/test_contract.py -q
+
+  build:
+    name: Build hook & wheel import
+    # Prove the wheel BUILD HOOK (hatch_build.py) generates the gRPC stubs in CI — the stubs are
+    # git-ignored, so a broken hook would ship a stub-less wheel whose `import ServiceBackend` fails only
+    # on a fresh install. Build the real wheel, assert the stubs are inside it, then install it into a
+    # clean venv with only its declared deps and import both doors for real.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build
+      - run: python -m build # runs hatch_build.py → generates + force-includes the stubs
+      - run: python scripts/check_wheel_stubs.py # assert the stubs are actually inside the wheel
+      - name: Clean-install the wheel and import both doors
+        run: |
+          set -euo pipefail
+          WHL=$(ls dist/*.whl)
+          python -m venv /tmp/smoke
+          /tmp/smoke/bin/python -m pip install --quiet "$WHL"
+          /tmp/smoke/bin/python -c "from throttlekit import ServiceBackend, RedisBackend; print('clean-install import OK')"
