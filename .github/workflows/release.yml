@@ -2,13 +2,22 @@ name: Release
 
 # Publishes throttlekit-py to PyPI when a `v*` tag is pushed, then cuts the matching GitHub Release
 # (notes from the CHANGELOG section for that version) so the tag shows as "Latest" on GitHub. e.g.
-#   git tag v0.1.0 && git push origin v0.1.0
+#   git tag v0.5.0 && git push origin v0.5.0
 #
-# Auth: a PyPI API token stored as the repo secret PYPI_API_TOKEN. Add it once with
-#   gh secret set PYPI_API_TOKEN -R AmeyaBorkar/throttlekit-py
-# (paste the token — starting `pypi-` — at the prompt; it lands only in GitHub's encrypted secrets).
-# For the FIRST publish of a not-yet-existing project the token must be ACCOUNT-scoped (a
-# project-scoped token can't exist until the project does); swap to a project-scoped token afterward.
+# Auth: PyPI TRUSTED PUBLISHING (OIDC) — no long-lived token. The publish job mints a short-lived OIDC
+# token (`id-token: write`) that PyPI exchanges for an upload token, scoped to this repo + workflow.
+#
+# ONE-TIME PyPI SETUP (required before the next release, else publish fails `invalid-publisher`):
+#   PyPI → the `throttlekit-py` project → Settings → Publishing → "Add a new pending publisher", with:
+#     PyPI Project Name : throttlekit-py
+#     Owner             : AmeyaBorkar
+#     Repository name   : throttlekit-py
+#     Workflow filename : release.yml
+#     Environment       : (leave blank)
+#   (The project already exists, so configure it under the project's own Publishing settings — not the
+#   account-level "pending publishers" for a not-yet-created project.)
+# Once a trusted-publishing release succeeds, the old `PYPI_API_TOKEN` repo secret is unused and can be
+# deleted. See RELEASING.md.
 
 on:
   push:
@@ -54,14 +63,17 @@ jobs:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      # Trusted publishing: mint the OIDC token PyPI exchanges for a scoped upload token. No password.
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+        # No `password:` → the action uses the OIDC token from `id-token: write` (trusted publishing).
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
           # Idempotency: a duplicate-version upload (e.g. a re-pushed/re-run tag) is a no-op success,
           # not a hard "file already exists" failure. PyPI never allows overwriting an existing version.
           skip-existing: true
