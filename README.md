@@ -12,6 +12,10 @@ backends:
 | `ServiceBackend` | gRPC → [`throttlekit-server`](https://github.com/AmeyaBorkar/throttlekit/tree/main/server) | the service (= the core) | you want the full surface (`check`/`check_many`/`peek`/`forecast`) and to never touch the raw wire |
 | `RedisBackend` | vendored Lua → the **same Redis** a Node fleet uses | Lua-in-Redis (the core's own script) | you already run Redis and want one hop, no extra service — `check` only |
 
+Each door has an `asyncio` twin — **`AsyncServiceBackend`** and **`AsyncRedisBackend`** — and there are
+batteries-included **FastAPI / Starlette / Django / Flask** integrations under `throttlekit.contrib`
+(see below).
+
 > **Status: experimental (alpha).** The contract (`throttlekit.proto`, the golden vectors, and the
 > extracted Lua) is vendored and checksum-pinned from the frozen `throttlekit` 1.0 core; this client
 > tracks it. The raw Lua wire is **not** a frozen contract yet (it ships `frozen: false`), so the
@@ -104,6 +108,86 @@ Strategies: `Gcra`, `TokenBucket`, `FixedWindow`, `SlidingWindow`, `SlidingWindo
 joins as `f"{prefix}:{key}"` — the **same** key scheme the core uses, so a Python and a Node client on
 one limit address the same Redis key. The backend is client-agnostic: pass any object with `evalsha` /
 `eval` (`redis-py` satisfies it structurally), exactly as the Node `RedisStore` does.
+
+## Use — async (`asyncio`)
+
+Both doors have `asyncio` twins with the identical surface and the same one-oracle guarantee (they
+`await` the transport; they never re-derive a decision). Neither is imported by `import throttlekit`
+— they load lazily, so the synchronous client stays free of `grpc.aio` / `redis.asyncio`.
+
+```python
+from throttlekit import AsyncServiceBackend
+
+async with AsyncServiceBackend("localhost:50051") as rl:
+    d = await rl.check("api", api_key)
+    if not d.allowed:
+        ...  # 429 — retry after d.retry_after_ms
+
+    adm = await rl.admit("checkout", user_id)   # the concurrency axis
+    async with adm:
+        if not adm.allowed:
+            return 429
+        await do_work()                          # released on exit (dropped=True if this raises)
+```
+
+```python
+import redis.asyncio as redis
+from throttlekit import AsyncRedisBackend, Gcra
+
+client = redis.Redis.from_url("redis://localhost:6379")
+api = AsyncRedisBackend(client, Gcra(limit=100, period_ms=60_000, burst=20), prefix="prod")
+d = await api.check(api_key)
+```
+
+## Framework integrations (`throttlekit.contrib`)
+
+Batteries-included adapters for the common Python web stacks. Install the matching extra and import the
+one you use (nothing here is pulled in by `import throttlekit`):
+
+```bash
+pip install "throttlekit-py[fastapi]"   # or [starlette] / [django] / [flask] / [all]
+```
+
+`bind_policy(backend, "api")` turns a service backend into a uniform `key → Decision` checker (a
+`RedisBackend.check` bound method already is one). A denial returns **429** with `Retry-After` /
+`RateLimit-*` headers (choose IETF or legacy `X-RateLimit-*` with `style=`); the admitted path stamps the
+same `RateLimit-*` headers on the response (for the FastAPI **dependency**, when your endpoint returns its
+own `Response` object FastAPI keeps it verbatim — reach for `ThrottleKitMiddleware` if you need
+unconditional stamping there). Adapters **fail open** by default if the backend is unreachable
+(`on_unavailable="allow"`) and key on the raw connecting peer (never a forgeable `X-Forwarded-For`).
+
+```python
+# FastAPI — a per-route dependency (or app.add_middleware(ThrottleKitMiddleware, ...) for global limiting)
+from fastapi import FastAPI, Depends
+from throttlekit import ServiceBackend, bind_policy
+from throttlekit.contrib.fastapi import RateLimit
+
+app, backend = FastAPI(), ServiceBackend("localhost:50051")
+
+@app.get("/items", dependencies=[Depends(RateLimit(bind_policy(backend, "api")))])
+async def items(): ...
+```
+
+```python
+# Flask — an extension + @tk.limit() decorator
+from throttlekit.contrib.flask import ThrottleKit
+tk = ThrottleKit(app, checker=bind_policy(backend, "api"))
+
+@app.get("/")
+@tk.limit()
+def index(): ...
+```
+
+```python
+# Django — a view decorator (+ ThrottleKitMiddleware to render denials as 429)
+from throttlekit.contrib.django import rate_limit
+
+@rate_limit(bind_policy(backend, "api"))
+def my_view(request): ...
+```
+
+Prefer to wire it yourself? Use the framework-agnostic `@rate_limit` decorator on any sync or async
+function, and `decision_headers(decision)` to render the headers.
 
 ## How this stays in lock-step with the core
 

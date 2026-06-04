@@ -29,7 +29,27 @@ dependencies = ["grpcio>=1.60", "protobuf>=6.31.1,<7"]
 [project.optional-dependencies]
 # The direct RedisBackend is client-agnostic; this pulls a concrete client for convenience/tests.
 redis = ["redis>=5"]
-dev = ["grpcio-tools>=1.60", "pytest>=8", "ruff>=0.6", "mypy>=1.11", "redis>=5"]
+# Framework integrations (throttlekit.contrib.*) — each extra pulls only its own framework.
+fastapi = ["fastapi>=0.100"]
+starlette = ["starlette>=0.37"]
+django = ["django>=4.2"]
+flask = ["flask>=2.2"]
+# Every runtime integration in one extra (httpx is intentionally omitted — it's a test-only dep for the
+# Starlette/FastAPI TestClient, not needed to *run* the adapters).
+all = ["redis>=5", "fastapi>=0.100", "starlette>=0.37", "django>=4.2", "flask>=2.2"]
+dev = [
+  "grpcio-tools>=1.60",
+  "pytest>=8",
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "redis>=5",
+  # the contrib adapters + their in-process test clients (httpx drives the Starlette/FastAPI TestClient)
+  "fastapi>=0.100",
+  "starlette>=0.37",
+  "django>=4.2",
+  "flask>=2.2",
+  "httpx>=0.27",
+]
 
 [project.urls]
 Homepage = "https://github.com/AmeyaBorkar/throttlekit-py"
@@ -72,6 +92,24 @@ follow_imports = "skip"
 # grpcio does not ship type information (no py.typed); don't fail strict on the untyped import.
 module = ["grpc", "grpc.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# The optional web frameworks (throttlekit.contrib.*). Django ships no type info; for the typed ones
+# (starlette / fastapi / flask) we deliberately do NOT couple the adapters to their exact, version-
+# varying type APIs — `follow_imports = skip` treats every framework symbol as Any (the adapters' real
+# correctness is proven by the in-process TestClient round-trips), matching how `grpc` is handled.
+module = [
+  "fastapi",
+  "fastapi.*",
+  "starlette",
+  "starlette.*",
+  "django",
+  "django.*",
+  "flask",
+  "flask.*",
+]
+ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
