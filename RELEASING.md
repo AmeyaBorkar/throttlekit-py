@@ -17,7 +17,11 @@ The `throttlekit-py` project already exists on PyPI, so configure the publisher 
 > | Owner | `AmeyaBorkar` |
 > | Repository name | `throttlekit-py` |
 > | Workflow filename | `release.yml` |
-> | Environment | *(leave blank)* |
+> | Environment | `release` |
+
+The `release` value must match the `environment: release` on the workflow's publish job. GitHub
+auto-creates that environment on first run; optionally pre-create it under *Settings → Environments* to
+add required-reviewer or branch protections that gate who can publish.
 
 Once a trusted-publishing release succeeds, the old `PYPI_API_TOKEN` repo secret is unused and can be
 deleted (`gh secret delete PYPI_API_TOKEN -R AmeyaBorkar/throttlekit-py`).

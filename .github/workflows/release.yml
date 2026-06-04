@@ -13,7 +13,7 @@ name: Release
 #     Owner             : AmeyaBorkar
 #     Repository name   : throttlekit-py
 #     Workflow filename : release.yml
-#     Environment       : (leave blank)
+#     Environment       : release   (must match the `environment: release` on the pypi job below)
 #   (The project already exists, so configure it under the project's own Publishing settings — not the
 #   account-level "pending publishers" for a not-yet-created project.)
 # Once a trusted-publishing release succeeds, the old `PYPI_API_TOKEN` repo secret is unused and can be
@@ -63,6 +63,9 @@ jobs:
     name: Publish to PyPI
     needs: build
     runs-on: ubuntu-latest
+    # The `release` GitHub environment (auto-created on first run) — its name MUST match the PyPI trusted
+    # publisher's "Environment" field. Add required-reviewer / branch rules here to gate who can publish.
+    environment: release
     permissions:
       # Trusted publishing: mint the OIDC token PyPI exchanges for a scoped upload token. No password.
       id-token: write
