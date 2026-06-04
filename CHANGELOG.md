@@ -6,6 +6,8 @@ All notable changes to **throttlekit-py** are documented here. The format follow
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-06-04
+
 ### Added
 
 - **Async backends (`asyncio`).** `AsyncServiceBackend` (the `grpc.aio` twin of `ServiceBackend`) and
@@ -60,7 +62,8 @@ All notable changes to **throttlekit-py** are documented here. The format follow
   rate-limit strategies, the frozen `Decision` / `Forecast` types, and the cross-language conformance
   suite proving decisions bit-identical to the Node oracle.
 
-[Unreleased]: https://github.com/AmeyaBorkar/throttlekit-py/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/AmeyaBorkar/throttlekit-py/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/AmeyaBorkar/throttlekit-py/releases/tag/v0.4.0
 [0.3.0]: https://github.com/AmeyaBorkar/throttlekit-py/releases/tag/v0.3.0
 [0.2.1]: https://github.com/AmeyaBorkar/throttlekit-py/releases/tag/v0.2.1
 [0.2.0]: https://github.com/AmeyaBorkar/throttlekit-py/releases/tag/v0.2.0
