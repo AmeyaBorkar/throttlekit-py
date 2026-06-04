@@ -1,7 +1,11 @@
 [build-system]
 # grpcio-tools is a *build* dep: the wheel build hook (hatch_build.py) generates the gRPC stubs from
 # the vendored proto so they ship in the wheel (see [tool.hatch.build.targets.wheel] below).
-requires = ["hatchling", "grpcio-tools>=1.60"]
+# PINNED (not `>=`): the generated gencode embeds the build's protoc version and demands a protobuf
+# *runtime* >= it. An unpinned floor let the isolated build float to a newer protoc (6.33.5) whose
+# gencode out-ran our declared `protobuf>=6.31.1` floor (release smoke caught it pre-publish). ~=1.80.0
+# emits protoc-6.31.1 gencode, so codegen is reproducible and matches the runtime floor below.
+requires = ["hatchling", "grpcio-tools~=1.80.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -38,7 +42,7 @@ flask = ["flask>=2.2"]
 # Starlette/FastAPI TestClient, not needed to *run* the adapters).
 all = ["redis>=5", "fastapi>=0.100", "starlette>=0.37", "django>=4.2", "flask>=2.2"]
 dev = [
-  "grpcio-tools>=1.60",
+  "grpcio-tools~=1.80.0",  # match the pinned build tool so local codegen == the released gencode
   "pytest>=8",
   "ruff>=0.6",
   "mypy>=1.11",
