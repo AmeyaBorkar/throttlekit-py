@@ -1,6 +1,7 @@
 name: Release
 
-# Publishes throttlekit-py to PyPI when a `v*` tag is pushed, e.g.
+# Publishes throttlekit-py to PyPI when a `v*` tag is pushed, then cuts the matching GitHub Release
+# (notes from the CHANGELOG section for that version) so the tag shows as "Latest" on GitHub. e.g.
 #   git tag v0.1.0 && git push origin v0.1.0
 #
 # Auth: a PyPI API token stored as the repo secret PYPI_API_TOKEN. Add it once with
@@ -64,3 +65,49 @@ jobs:
           # Idempotency: a duplicate-version upload (e.g. a re-pushed/re-run tag) is a no-op success,
           # not a hard "file already exists" failure. PyPI never allows overwriting an existing version.
           skip-existing: true
+
+  github-release:
+    name: GitHub Release
+    # Cut the GitHub Release only after the version is actually on PyPI, so the notes' `pip install
+    # ==<version>` line is true the moment the Release appears. Without this job a pushed tag publishes
+    # to PyPI but leaves no Release object, so GitHub keeps badging the previous version "Latest".
+    needs: pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # least privilege: only this job may write the Release (top-level default is read).
+    steps:
+      - uses: actions/checkout@v5
+      - name: Create (or update) the GitHub Release for this tag
+        env:
+          # gh authenticates from the auto-provisioned, job-scoped GITHUB_TOKEN — no extra secret needed.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          # Pull the CHANGELOG block for this version: every line under the "## [X.Y.Z] …" header up to
+          # the next "## [" header. Uses literal prefix matching (index(...)==1), not regex, so the dots
+          # and brackets in the version need no escaping (a dynamic regex mis-escapes across awk variants).
+          NOTES=$(awk -v hdr="## [$VERSION]" '
+            index($0, hdr) == 1               { capture=1; next }
+            capture && index($0, "## [") == 1 { exit }
+            capture                           { print }
+          ' CHANGELOG.md)
+          NOTES_FILE="$(mktemp)"
+          {
+            if printf '%s' "$NOTES" | grep -q '[^[:space:]]'; then
+              printf '%s\n\n' "$NOTES"
+            else
+              # No matching CHANGELOG entry — never ship an empty Release body.
+              printf 'Release %s. See [CHANGELOG.md](CHANGELOG.md).\n\n' "$TAG"
+            fi
+            printf 'Install: `pip install throttlekit-py==%s`\n' "$VERSION"
+          } > "$NOTES_FILE"
+          # Idempotent: re-running a tag updates the existing Release instead of failing.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists — updating notes + marking latest."
+            gh release edit "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" --latest
+          else
+            echo "Creating Release $TAG (marked latest)."
+            gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" --latest --verify-tag
+          fi
