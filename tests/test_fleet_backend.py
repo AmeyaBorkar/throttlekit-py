@@ -229,7 +229,9 @@ def test_leased_limiter_default_batch_round_trips_per_request() -> None:
     stub = _BudgetFleetStub(budget=1000, limit=1000)
     backend = _fleet(stub)
     try:
-        limiter = backend.leased("api")  # default batch=1 ⇒ honest per-request behaviour, no amortization
+        limiter = backend.leased(
+            "api"
+        )  # default batch=1 ⇒ honest per-request behaviour, no amortization
         for _ in range(5):
             assert limiter.check(now=0).allowed
         assert stub.reserves == 5
