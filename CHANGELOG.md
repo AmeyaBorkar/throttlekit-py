@@ -6,6 +6,8 @@ All notable changes to **throttlekit-py** are documented here. The format follow
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-06-10
+
 ### Added
 
 - **Tier-2 fleet leasing + the Monitor door client.** `LeaseSpender` ports the core's window-coupled lease
