@@ -8,6 +8,14 @@ All notable changes to **throttlekit-py** are documented here. The format follow
 
 ### Added
 
+- **Tier-2 fleet leasing + the Monitor door client.** `LeaseSpender` ports the core's window-coupled lease
+  spend (proven **byte-for-byte** against the new golden `lease` vectors); `FleetBackend` /
+  `AsyncFleetBackend` lease a chunk of a `federated:` policy's global per-window budget over the new
+  `Fleet.Reserve` RPC, and a `LeasedLimiter` spends it locally — round-tripping only to refresh (one round
+  trip per batch, not per request). The **server is the one oracle** for the grant size; the client only
+  spends it and surfaces a 0-capacity grant as the server's denial. `MonitorBackend` /
+  `AsyncMonitorBackend` read a live server snapshot over the read-only `Monitor` door. The vendored
+  contract is re-synced to the core's Fleet + Monitor proto + lease vectors.
 - **A full `examples/` set** — one runnable script per capability: sync and async `ServiceBackend`, the
   direct `RedisBackend`, the cost axis (`debit` streaming tokens against a budget), the concurrency
   `admit` lifecycle (held slot / `dropped` / `heartbeat` / `binding_axis`), and a FastAPI web-adapter

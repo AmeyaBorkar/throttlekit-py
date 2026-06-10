@@ -33,6 +33,7 @@ from .errors import (
     ThrottleKitError,
 )
 from .headers import decision_headers
+from .lease_spender import LeaseGrant, LeaseSpender
 from .ratelimit import Checker, OnUnavailable, RateLimited, bind_policy, rate_limit
 from .strategies import (
     FixedWindow,
@@ -45,6 +46,10 @@ from .strategies import (
 )
 
 if TYPE_CHECKING:
+    from .fleet_backend import FleetBackend, Lease, LeasedLimiter
+    from .fleet_backend_async import AsyncFleetBackend, AsyncLeasedLimiter
+    from .monitor_backend import MonitorBackend, MonitorPolicy, MonitorSnapshot
+    from .monitor_backend_async import AsyncMonitorBackend
     from .redis_backend import RedisBackend, RedisClientLike
     from .redis_backend_async import AsyncRedisBackend, AsyncRedisClientLike
     from .service_backend import Admission, ServiceBackend
@@ -61,6 +66,19 @@ __all__ = [
     "AsyncAdmission",
     "AsyncRedisBackend",
     "AsyncRedisClientLike",
+    # Tier-2 fleet leasing (Fleet.Reserve): the pure spend (eager) + the gRPC lease client (lazy).
+    "LeaseSpender",
+    "LeaseGrant",
+    "FleetBackend",
+    "Lease",
+    "LeasedLimiter",
+    "AsyncFleetBackend",
+    "AsyncLeasedLimiter",
+    # Read-only Monitor door client (lazy — needs grpc).
+    "MonitorBackend",
+    "MonitorPolicy",
+    "MonitorSnapshot",
+    "AsyncMonitorBackend",
     # Strategies for the direct RedisBackend.
     "Strategy",
     "Gcra",
@@ -95,6 +113,15 @@ _LAZY = {
     "AsyncAdmission": "service_backend_async",
     "AsyncRedisBackend": "redis_backend_async",
     "AsyncRedisClientLike": "redis_backend_async",
+    "FleetBackend": "fleet_backend",
+    "Lease": "fleet_backend",
+    "LeasedLimiter": "fleet_backend",
+    "AsyncFleetBackend": "fleet_backend_async",
+    "AsyncLeasedLimiter": "fleet_backend_async",
+    "MonitorBackend": "monitor_backend",
+    "MonitorPolicy": "monitor_backend",
+    "MonitorSnapshot": "monitor_backend",
+    "AsyncMonitorBackend": "monitor_backend_async",
 }
 
 
