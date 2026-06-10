@@ -139,10 +139,17 @@ class FleetBackend:
         return _lease(resp.lease)
 
     def leased(
-        self, policy: str, *, domain: str = "", window_coupled: bool = True
+        self, policy: str, *, domain: str = "", batch: int = 1, window_coupled: bool = True
     ) -> LeasedLimiter:
-        """A :class:`LeasedLimiter` that leases ``policy`` (for ``domain``) and spends it locally."""
-        return LeasedLimiter(self, policy, domain=domain, window_coupled=window_coupled)
+        """A :class:`LeasedLimiter` that leases ``policy`` (for ``domain``) in ``batch``-sized chunks.
+
+        ``batch`` is how many units to lease per refresh round trip — the Tier-2 throughput lever. The
+        default 1 round-trips once per request (like the direct service door); set it higher (e.g. 100) to
+        serve ~``batch`` requests per ``Fleet.Reserve``, bounded by the policy's available global budget.
+        """
+        return LeasedLimiter(
+            self, policy, domain=domain, batch=batch, window_coupled=window_coupled
+        )
 
     def close(self) -> None:
         """Close the underlying channel."""
@@ -161,12 +168,14 @@ class FleetBackend:
 
 
 class LeasedLimiter:
-    """Lease a chunk of a policy's budget and spend it locally, refreshing only on a shortfall.
+    """Lease ``batch``-sized chunks of a policy's budget and spend them locally, refreshing on a shortfall.
 
     The ergonomic high-throughput client: :meth:`check` serves from local credits (no round trip) and only
-    ``Fleet.Reserve``s when the chunk is spent — roughly one round trip per batch instead of one per request.
-    The :class:`~throttlekit.LeaseSpender` is built from the first grant's ``limit`` + window, so the client
-    needs no out-of-band policy config. One instance tracks one ``(policy, domain)`` budget.
+    ``Fleet.Reserve``s when the chunk is spent. With the default ``batch=1`` that is one round trip per
+    request (like the direct service door); raise ``batch`` to serve ~``batch`` requests per round trip — the
+    Tier-2 win — bounded by the policy's available global budget (a partial grant just refreshes sooner). The
+    :class:`~throttlekit.LeaseSpender` is built from the first grant's ``limit`` + window, so the client needs
+    no out-of-band policy config. One instance tracks one ``(policy, domain)`` budget.
     """
 
     def __init__(
@@ -175,11 +184,15 @@ class LeasedLimiter:
         policy: str,
         *,
         domain: str = "",
+        batch: int = 1,
         window_coupled: bool = True,
     ) -> None:
+        if batch < 1:
+            raise ValueError(f"batch must be >= 1, got {batch}")
         self._backend = backend
         self._policy = policy
         self._domain = domain
+        self._batch = batch
         self._window_coupled = window_coupled
         self._spender: LeaseSpender | None = None
 
@@ -195,7 +208,11 @@ class LeasedLimiter:
                 decision = self._spender.spend(ts, cost)
                 if decision is not None:
                     return decision
-            lease = self._backend.reserve(self._policy, domain=self._domain, wants=cost)
+            # Over-ask up to `batch` to amortize the round trip, but never below `cost` so one large request
+            # is still satisfiable in a single refresh. The server grants min(wants, available).
+            lease = self._backend.reserve(
+                self._policy, domain=self._domain, wants=max(cost, self._batch)
+            )
             if self._spender is None:
                 self._spender = LeaseSpender(
                     limit=lease.limit,

@@ -28,6 +28,10 @@ class LeaseGrant:
     """Epoch-ms window boundary the grant is coupled to; invalid after this instant."""
 
 
+# Permissive of any positive finite number (float allowed), mirroring the core's `requireCost` exactly — the
+# public `spend`/`check` surface types `cost: int` because the wire path (Fleet.Reserve, Decision) is always
+# integer, but the runtime stays float-tolerant (and `math.floor` below handles fractional credits) so a
+# direct caller gets byte-identical-to-Node behaviour if it does pass a fractional cost.
 def _require_cost(cost: float) -> None:
     if not math.isfinite(cost) or cost <= 0:
         raise ValueError(f"cost must be a positive finite number, got {cost!r}")

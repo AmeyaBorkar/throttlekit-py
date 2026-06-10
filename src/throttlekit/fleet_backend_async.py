@@ -61,10 +61,16 @@ class AsyncFleetBackend:
         return _lease(resp.lease)
 
     def leased(
-        self, policy: str, *, domain: str = "", window_coupled: bool = True
+        self, policy: str, *, domain: str = "", batch: int = 1, window_coupled: bool = True
     ) -> AsyncLeasedLimiter:
-        """An :class:`AsyncLeasedLimiter` that leases ``policy`` (for ``domain``) and spends it locally."""
-        return AsyncLeasedLimiter(self, policy, domain=domain, window_coupled=window_coupled)
+        """An :class:`AsyncLeasedLimiter` leasing ``policy`` (for ``domain``) in ``batch``-sized chunks.
+
+        ``batch`` is how many units to lease per refresh round trip (the Tier-2 throughput lever); the
+        default 1 round-trips per request, raise it to serve ~``batch`` requests per ``Fleet.Reserve``.
+        """
+        return AsyncLeasedLimiter(
+            self, policy, domain=domain, batch=batch, window_coupled=window_coupled
+        )
 
     async def close(self) -> None:
         """Close the underlying channel."""
@@ -91,11 +97,15 @@ class AsyncLeasedLimiter:
         policy: str,
         *,
         domain: str = "",
+        batch: int = 1,
         window_coupled: bool = True,
     ) -> None:
+        if batch < 1:
+            raise ValueError(f"batch must be >= 1, got {batch}")
         self._backend = backend
         self._policy = policy
         self._domain = domain
+        self._batch = batch
         self._window_coupled = window_coupled
         self._spender: LeaseSpender | None = None
 
@@ -107,7 +117,10 @@ class AsyncLeasedLimiter:
                 decision = self._spender.spend(ts, cost)
                 if decision is not None:
                     return decision
-            lease = await self._backend.reserve(self._policy, domain=self._domain, wants=cost)
+            # Over-ask up to `batch` to amortize the round trip, but never below `cost`. min(wants, available).
+            lease = await self._backend.reserve(
+                self._policy, domain=self._domain, wants=max(cost, self._batch)
+            )
             if self._spender is None:
                 self._spender = LeaseSpender(
                     limit=lease.limit,

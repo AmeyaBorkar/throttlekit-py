@@ -180,3 +180,67 @@ def test_async_reserve_decodes_lease_and_async_leased_loop() -> None:
     assert lease.capacity == 4
     assert first.allowed and first.remaining == 0
     assert not second.allowed and second.retry_after_ms == 42
+
+
+class _BudgetFleetStub:
+    """A budget-aware fake: grants min(wants, remaining budget) per Reserve, like a real fixed-window server.
+
+    The plain _FakeFleetStub returns queued leases IGNORING wants, which masks whether the client actually
+    batches; this honours wants so a batch lever can be proven against it.
+    """
+
+    def __init__(self, *, budget: int, limit: int, expiry_ms: int = 60_000) -> None:
+        self.budget = budget
+        self.limit = limit
+        self.expiry_ms = expiry_ms
+        self.reserves = 0
+
+    def Reserve(self, req: object, metadata: object = None) -> object:  # noqa: N802 (gRPC stub name)
+        self.reserves += 1
+        want = req.wants if getattr(req, "wants", 0) > 0 else 1  # type: ignore[attr-defined]
+        grant = min(want, self.budget)
+        self.budget -= grant
+        return pb.ReserveResponse(
+            lease=pb.Lease(
+                capacity=grant,
+                expiry_ms=self.expiry_ms,
+                refresh_interval_ms=self.expiry_ms,
+                safe_capacity=grant,
+                retry_after_ms=self.expiry_ms if grant == 0 else 0,
+                limit=self.limit,
+            )
+        )
+
+
+def test_leased_limiter_amortizes_reserves_with_batch() -> None:
+    stub = _BudgetFleetStub(budget=1000, limit=1000)
+    backend = _fleet(stub)
+    try:
+        limiter = backend.leased("api", domain="acme", batch=100)
+        for i in range(250):
+            assert limiter.check(now=0).allowed, f"request {i} denied unexpectedly"
+        # 250 requests served from three 100-unit leases (~83 req/trip) — NOT one round trip per request.
+        assert stub.reserves == 3
+    finally:
+        backend.close()
+
+
+def test_leased_limiter_default_batch_round_trips_per_request() -> None:
+    stub = _BudgetFleetStub(budget=1000, limit=1000)
+    backend = _fleet(stub)
+    try:
+        limiter = backend.leased("api")  # default batch=1 ⇒ honest per-request behaviour, no amortization
+        for _ in range(5):
+            assert limiter.check(now=0).allowed
+        assert stub.reserves == 5
+    finally:
+        backend.close()
+
+
+def test_leased_rejects_non_positive_batch() -> None:
+    backend = _fleet(_FakeFleetStub())
+    try:
+        with pytest.raises(ValueError):
+            backend.leased("api", batch=0)
+    finally:
+        backend.close()
