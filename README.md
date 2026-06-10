@@ -2,8 +2,8 @@
 
 **Beyond rate limiting — from Python.** Govern **rate, concurrency, and cost**, *provably*. This is
 [**ThrottleKit**](https://www.npmjs.com/package/throttlekit)'s Python client, and it re-implements nothing:
-every decision comes from the **one** Node core and its two engines — **GALE** (*Globally-Accounted Learned Escrow* — provable distributed leasing,
-a fleet-size-independent overshoot bound machine-checked in TLA⁺) and **TALE** (*Temporally-Accounted Learned Escrow* — token-budget escrow — meter
+every decision comes from the **one** Node core and its two engines — **GALE** (provable distributed leasing,
+a fleet-size-independent overshoot bound machine-checked in TLA⁺) and **TALE** (token-budget escrow — meter
 what your LLM *spends* as it streams) — **bit-identical** to the Node oracle, through either of two pluggable
 backends:
 
