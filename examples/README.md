@@ -37,10 +37,11 @@ The **direct** `redis_backend.py` needs no server — it runs the core's Lua aga
 (`THROTTLEKIT_REDIS_URL`, default `redis://localhost:6379`). The **web** sample needs the `[fastapi]` extra
 and `uvicorn` (`pip install "throttlekit-py[fastapi]" uvicorn`).
 
-> **See your decisions live.** Start the server with `--tui` for a built-in **terminal dashboard**
-> (`throttlekit-server --config policies.yaml --tui`) — the traffic these examples drive shows up there, with
-> live **binding-axis attribution** (which of rate / concurrency / cost bound each denial) for `unified`
-> policies. It watches the *server's* decisions, so your Python client's traffic appears too.
+> **See your decisions live.** Start the server with `--tui` for **ThrottleKit Lens**, the built-in
+> **terminal dashboard** (`throttlekit-server --config policies.yaml --tui`) — the traffic these examples
+> drive shows up there, with live **binding-axis attribution** (which of rate / concurrency / cost bound each
+> denial) for `unified` policies. It watches the *server's* decisions, so your Python client's traffic appears
+> too.
 
 (Deno KV and Cloudflare D1 / Durable Objects / Workers KV are *edge-runtime* stores, reachable only inside
 those runtimes — not through the service door.) For the design behind the two doors, see the

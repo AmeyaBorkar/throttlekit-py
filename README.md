@@ -16,6 +16,13 @@ Each door has an `asyncio` twin — **`AsyncServiceBackend`** and **`AsyncRedisB
 batteries-included **FastAPI / Starlette / Django / Flask** integrations under `throttlekit.contrib`
 (see below).
 
+**New in 0.5.0 — the fleet reaches Python.** Point the same `ServiceBackend` at a server whose policy is
+configured **distributed** (`federated:` / `fleetBudget:` / `distributedConcurrency:` / `federatedFairEscrow:`)
+and every decision is **coordinated across the whole fleet** — with *no client change*. For the
+highest-throughput path, the new **`FleetBackend`** leases a chunk of a global budget and spends it locally
+(one round trip per *batch*, not per request); and the read-only **`MonitorBackend`** reads the server's live
+operational state — [Fleet & Monitor clients](https://github.com/AmeyaBorkar/throttlekit-py/wiki/Fleet-and-Monitor).
+
 The `ServiceBackend` is **store-agnostic**: the `throttlekit-server` it points at can be backed by an
 in-process **memory** store, a shared **Redis**, **Postgres** (`--store postgres`), or **DynamoDB**
 (`--store dynamodb`) — no Redis required for the latter two — and the client sends the same requests with
@@ -144,6 +151,48 @@ client = redis.Redis.from_url("redis://localhost:6379")
 api = AsyncRedisBackend(client, Gcra(limit=100, period_ms=60_000, burst=20), prefix="prod")
 d = await api.check(api_key)
 ```
+
+## Fleet leasing & the Monitor door (0.5.0)
+
+Two new clients reach the server's additive **Fleet** and **Monitor** doors.
+
+**`FleetBackend` — lease a chunk, spend it locally.** When the server runs a `federated:` policy, a very
+high-throughput client can lease a slice of the global per-window budget through `Fleet.Reserve` and serve it
+**locally**, round-tripping only to *refresh* — not once per request. The server stays the **one oracle** (it
+sizes the grant); `LeasedLimiter` spends it with a `LeaseSpender` that is byte-for-byte the core's leased
+path (pinned by the golden `lease` vectors):
+
+```python
+from throttlekit import FleetBackend
+
+with FleetBackend("localhost:50051") as fleet:               # loopback needs no secret
+    api = fleet.leased("global-api", domain="acme", batch=200)   # lease ~200 at a time, for this tenant
+    for _ in workload:
+        d = api.check()                                      # spends a local credit; refreshes when low
+        if not d.allowed:
+            backoff(d.retry_after_ms)                        # the global window is spent (the server's verdict)
+```
+
+`batch` (≥ 1) is the throughput lever — how much budget the client holds per refresh; the grant is
+**window-coupled** and discarded at the server's window boundary, so the fleet never over-admits. One
+`LeasedLimiter` tracks one `(policy, domain)` budget — `domain` selects which tenant's budget to lease (empty
+leases the policy as a whole). `AsyncFleetBackend` is the `await` twin.
+
+**`MonitorBackend` — read the server's live state.** The read-only **Monitor door** exposes the same
+operational state **ThrottleKit Lens** renders in the terminal — from Python, remotely:
+
+```python
+from throttlekit import MonitorBackend
+
+with MonitorBackend("localhost:50051") as mon:               # loopback needs no secret
+    snap = mon.get_snapshot()                                # a point-in-time operational snapshot
+    for p in snap.policies:
+        print(p.name, p.allowed, p.denied)                   # per-policy allow / deny, top keys, latency, …
+```
+
+`AsyncMonitorBackend` is the `await` twin. Both doors are **loopback-only by default**; pass the server's
+secret as `secret="…"` (with TLS `credentials=…`) to reach them from another host — paired with the server's
+`--fleet-secret` / `--monitor-secret`.
 
 ## Framework integrations (`throttlekit.contrib`)
 

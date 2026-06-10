@@ -24,6 +24,10 @@ rate-limiting math itself. The threats most relevant to it:
 - **Service door (`ServiceBackend`).** The default gRPC credentials are **insecure** (loopback/dev only).
   Front any exposed `throttlekit-server` with **TLS/mTLS** so nothing can poison a shared budget — pass channel
   credentials to `ServiceBackend(target, credentials=...)`.
+- **Fleet & Monitor doors (`FleetBackend`, `MonitorBackend`).** Same posture: the server binds these **loopback-only
+  by default** and exposing either off-host requires an explicit secret (and you should add **TLS**). Treat them as
+  sensitive — the Fleet `Reserve` door *hands out* a chunk of a policy's global budget, and the Monitor door
+  *exposes* traffic snapshots and the denial feed (i.e. your limiter keys). Don't put them on an open port.
 - **Direct door (`RedisBackend`).** It runs the core's vendored Lua against your shared Redis. Any party that
   can write to that Redis can consume or distort the budget — restrict access to trusted instances and treat
   the Redis as a trust boundary.
